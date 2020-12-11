@@ -3,8 +3,8 @@
 
 #include <initializer_list>
 
-#include "Core/Maths/vector3.hpp"
-#include "Core/Maths/vector4.hpp"
+#include "vector3.hpp"
+#include "vector4.hpp"
 
 class Matrix4
 {

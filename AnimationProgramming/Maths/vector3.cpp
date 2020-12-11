@@ -1,4 +1,4 @@
-#include "Core/Maths/vector3.hpp"
+#include "vector3.hpp"
 
 Vector3::Vector3(/* args */)
 {

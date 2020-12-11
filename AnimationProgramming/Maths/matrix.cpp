@@ -2,8 +2,9 @@
 #include <iostream>
 #include <cassert>
 
+#define _USE_MATH_DEFINES
 #include <math.h>
-#include "Core/Maths/matrix.hpp"
+#include "matrix.hpp"
 
 Matrix4::Matrix4()
 {

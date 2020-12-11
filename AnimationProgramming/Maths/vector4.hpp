@@ -1,7 +1,7 @@
 #ifndef VECTOR4
 #define VECTOR4
 
-#include "Core/Maths/vector3.hpp"
+#include "vector3.hpp"
 
 class Vector4
 {

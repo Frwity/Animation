@@ -1,4 +1,4 @@
-#include "Core/Maths/vector2.hpp"
+#include "vector2.hpp"
 
 
 Vector2::Vector2()
