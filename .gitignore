@@ -8,3 +8,7 @@
 # Executables
 exe
 *.exe
+
+#Release
+Release/*
+Release/*/**
