@@ -10,10 +10,4 @@ exe
 *.exe
 
 #Release
-AnimationProgramming/Release
-AnimationProgramming/Release/
 AnimationProgramming/Release/*
-AnimationProgramming/Release/**
-AnimationProgramming\Release\*
-Release\*
-Release\**
