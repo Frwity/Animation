@@ -1,5 +1,4 @@
-#ifndef __VECTOR3_HPP__
-#define __VECTOR3_HPP__
+#pragma once
 
 #include <math.h>
 
@@ -40,15 +39,7 @@ public:
         to_return.z = this->z - vector.z;
         return to_return;
     }
-    Vector3 operator*(float number) const
-    {
-        Vector3 to_return;
 
-        to_return.x = this->x * number;
-        to_return.y = this->y * number;
-        to_return.z = this->z * number;
-        return to_return;
-    }
     Vector3 operator*=(float number)
     {
         this->x *= number;
@@ -66,4 +57,5 @@ public:
     }
 };
 
-#endif
+Vector3 operator*(const Vector3& lhs, float number);
+Vector3 operator*(float number, const Vector3& rhs);

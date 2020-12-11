@@ -2,22 +2,25 @@
 //
 
 #include <iostream>
+#include <memory>
 #include "stdafx.h"
 
 #include "Engine.h"
 #include "Simulation.h"
 #include "Skeleton.h"
 
+std::unique_ptr<Skeleton> skeleton;
+
 class CSimulation : public ISimulation
 {
 	virtual void Init() override
 	{
 		int spine01 =	GetSkeletonBoneIndex("spine_01");
-
+		
 		for (size_t i = 0; i < GetSkeletonBoneCount(); i++)
 		{
 			int parent = GetSkeletonBoneParentIndex(i);
-			std::cout <<  (parent == -1 ? "no parent " : GetSkeletonBoneName(i)) << " is child of " << GetSkeletonBoneName(parent) << std::endl;
+			std::cout <<  GetSkeletonBoneName(i) << " is child of " << (parent == -1 ? "no parent " : GetSkeletonBoneName(parent)) << std::endl;
 		}
 
 		for (size_t i = 0; i < 3; i++)
@@ -35,20 +38,30 @@ class CSimulation : public ISimulation
 		
 		float posX, posY, posZ, quatW, quatX, quatY, quatZ;
 		size_t keyCount = GetAnimKeyCount("ThirdPersonWalk.anim");
-		GetAnimLocalBoneTransform("ThirdPersonWalk.anim", spineParent, keyCount / 2, posX, posY, posZ, quatW, quatX, quatY, quatZ);
+		GetAnimLocalBoneTransform("ThirdPersonWalk.anim", spineParent, 0, posX, posY, posZ, quatW, quatX, quatY, quatZ);
 
 		printf("Spine parent bone : %s\n", pelvisParentName);
 		printf("Spine parent bone : %s\n", spineParentName);
 		printf("Anim key count : %ld\n", keyCount);
 		printf("Anim key : pos(%.2f,%.2f,%.2f) rotation quat(%.10f,%.10f,%.10f,%.10f)\n", posX, posY, posZ, quatW, quatX, quatY, quatZ);
+		
+		skeleton = std::make_unique<Skeleton>("ThirdPersonWalk.anim");
+		std::cout << "----------------------------------------------------- Display : " << std::endl;
+		skeleton->displayConsolGraph();
+		std::cout << "----------------------------------------------------- Draw : " << std::endl;
 
-		Skeleton skeleton;
-		skeleton.displayConsolGraph();
-		skeleton.draw();
+		std::cout << GetSkeletonBoneName(skeleton->data.id) << std::endl;
+		skeleton->data.getGlobalMatrix().display();
+		std::cout << "----------------------------------------------------- : " << std::endl;
+		std::cout << GetSkeletonBoneName(skeleton->children.front().data.id) << std::endl;
+		skeleton->children.front().data.getGlobalMatrix().display();
+		
 	}
 
 	virtual void Update(float frameTime) override
 	{
+		skeleton->updateWithAnimation(frameTime);
+		skeleton->draw();
 
 		// X axis
 		DrawLine(0, 0, 0, 100, 0, 0, 1, 0, 0);
@@ -58,7 +71,6 @@ class CSimulation : public ISimulation
 
 		// Z axis
 		DrawLine(0, 0, 0, 0, 0, 100, 0, 0, 1);
-
 	}
 };
 

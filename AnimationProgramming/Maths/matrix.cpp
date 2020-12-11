@@ -5,6 +5,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "matrix.hpp"
+#include "Quaternion.hpp"
 
 Matrix4::Matrix4()
 {
@@ -72,7 +73,8 @@ Matrix4 Matrix4::transpose() const
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
             to_return.accessor(j, i) = Matrix4::accessor(i, j);
-    //TODO ?
+    // TODO ?
+
     return to_return;
 }
 
@@ -140,6 +142,16 @@ Vector3 Matrix4::operator*(const Vector3 &to_mult) const
     Vector3 to_return(temp.x, temp.y, temp.z);
 
     return to_return;
+}
+
+Matrix4 Matrix4::operator/(float scalar) const
+{
+    Matrix4 rst = *this;
+    for(size_t i = 0; i < 16; i++)
+    {
+        rst.matrix[i] /= scalar;
+    }
+    return rst;
 }
 
 bool Matrix4::operator==(const Matrix4 &toCompare) const
@@ -327,6 +339,11 @@ Matrix4 Matrix4::createFixedAngleEulerRotationMatrix(float angleX, float angleY,
 Matrix4 Matrix4::createTRSMatrix(Vector3 translate, Vector3 rotate, Vector3 scale)
 {
     return createTranslationMatrix(translate) * createFixedAngleEulerRotationMatrix(rotate.x, rotate.y, rotate.z) * createScaleMatrix(scale);
+}
+
+Matrix4 Matrix4::createTRSMatrix(Vector3 translate, Quaternion rotate, Vector3 scale)
+{
+    return createTranslationMatrix(translate) * rotate.GetRotationMatrix() * createScaleMatrix(scale);
 }
 
 Matrix4 Matrix4::createRotationMatrix(const Vector3 vect, float angle)

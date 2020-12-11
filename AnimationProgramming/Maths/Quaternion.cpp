@@ -112,6 +112,11 @@ float Quaternion::Length() const
 	return sqrtf(Norm());
 }
 
+float Quaternion::SquaredLength() const
+{
+	return Norm();
+}
+
 void Quaternion::Inverse()
 {
 	Conjugate();

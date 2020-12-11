@@ -71,7 +71,7 @@ unsigned int Vector3::angleBtwVect(Vector3 vector) const
 
     float fst_vector_length = this->getMagnitude();
     float scd_vector_length = vector.getMagnitude();
-    unsigned int angle = acos(dotProduct(vector) / fst_vector_length * scd_vector_length);
+    unsigned int angle = acosf(dotProduct(vector) / fst_vector_length * scd_vector_length);
     return angle;
 }
 
@@ -89,4 +89,19 @@ float Vector3::triangleArea(Vector3 v) const
 
 Vector3::~Vector3()
 {
+}
+
+Vector3 operator*(const Vector3& lhs, float number)
+{
+    Vector3 to_return;
+
+    to_return.x = lhs.x * number;
+    to_return.y = lhs.y * number;
+    to_return.z = lhs.z * number;
+    return to_return;
+}
+
+Vector3 operator*(float number, const Vector3& rhs)
+{
+    return rhs * number;
 }

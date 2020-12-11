@@ -29,6 +29,7 @@ public:
     Matrix4 operator*(const Matrix4&) const;
     Vector4 operator*(const Vector4&) const;
     Vector3 operator*(const Vector3&) const;
+    Matrix4 operator/(float) const;
     bool operator==(const Matrix4&) const;
     bool operator!=(const Matrix4&) const;
 
@@ -54,6 +55,7 @@ public:
     static Matrix4 createFixedAngleEulerRotationMatrix(float angleX, float angleY, float angleZ); 
 
     static Matrix4 createTRSMatrix(Vector3 translate, Vector3 rotate, Vector3 scale);
+    static Matrix4 createTRSMatrix(Vector3 translate, class Quaternion rotate, Vector3 scale);
 
     static Matrix4 createRotationMatrix(const Vector3 vect, float angle);
 
