@@ -10,19 +10,28 @@ public:
     T data;
 
     Graph() = default;
-    Graph(const T& _data)
-    {
-        data = _data;
-    }
+
+    template <typename... TArgs>
+     Graph(TArgs... args)
+         : children{}, data {args...}
+    {}
+
+    //Graph(const T& _data)
+    //{
+    //    data = _data;
+    //}
+
     ~Graph() = default;
 
     void setData(const T& _data)
     {
         data = _data;
     }
-    void addChild(const T& _data)
+
+    template <typename... TArgs>
+    void addChild(TArgs... args)
     {
-        Graph graph(_data);
+        Graph graph(args...);
         children.push_back(graph);
     }
 };

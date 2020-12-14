@@ -45,7 +45,7 @@ class CSimulation : public ISimulation
 		printf("Anim key count : %ld\n", keyCount);
 		printf("Anim key : pos(%.2f,%.2f,%.2f) rotation quat(%.10f,%.10f,%.10f,%.10f)\n", posX, posY, posZ, quatW, quatX, quatY, quatZ);
 		
-		skeleton = std::make_unique<Skeleton>("ThirdPersonWalk.anim");
+		skeleton = std::make_unique<Skeleton>(std::vector<std::string>{"ThirdPersonWalk.anim", "ThirdPersonRun.anim"});
 		std::cout << "----------------------------------------------------- Display : " << std::endl;
 		skeleton->displayConsolGraph();
 		std::cout << "----------------------------------------------------- Draw : " << std::endl;

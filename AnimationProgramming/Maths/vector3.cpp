@@ -91,6 +91,17 @@ Vector3::~Vector3()
 {
 }
 
+Vector3 Vector3::lerp(const Vector3& a, const Vector3& b, float t)
+{
+    Vector3 rst;
+
+    rst.x = a.x + t * (b.x - a.x);
+    rst.y = a.y + t * (b.y - a.y);
+    rst.z = a.z + t * (b.z - a.z);
+
+    return rst;
+}
+
 Vector3 operator*(const Vector3& lhs, float number)
 {
     Vector3 to_return;

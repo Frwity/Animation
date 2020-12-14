@@ -21,6 +21,7 @@ public:
     float CrossProduct2(Vector3 v); 
     void normalize();
     Vector3 normalized() const;
+    static Vector3 lerp(const Vector3& a, const Vector3& b, float t);
 
     
     Vector3 operator+(Vector3 vector) const

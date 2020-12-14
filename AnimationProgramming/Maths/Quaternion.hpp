@@ -20,75 +20,55 @@ public:
 	Quaternion();
 	Quaternion(float, float, float, float);
 
-	void Mult(Quaternion);
-	Quaternion Mult(Quaternion) const;
+	void Mult(const Quaternion&);
+	Quaternion Mult(const Quaternion&) const;
+
 	Quaternion operator*(const Quaternion q2) const
 	{
 		return Mult(q2);
 	}
 
-	void Add(Quaternion);
-	Quaternion Add(Quaternion) const;
+	static float DotProduct(const Quaternion&, const Quaternion&);
 
-	void Neg(Quaternion);
-	Quaternion Neg(Quaternion) const;
+	void Add(const Quaternion&);
+	Quaternion Add(const Quaternion&) const;
+	Quaternion operator+(const Quaternion& q2) const
+	{
+		return Add(q2);
+	}
+
+	void Neg(const Quaternion&);
+	Quaternion Neg(const Quaternion&) const;
 
 	void Scale(float);
 	const Quaternion Scale(float) const;
+	Quaternion operator*(const float f) const
+	{
+		return Scale(f);
+	}
+	Quaternion operator/(const float f) const
+	{
+		return Quaternion(w / f, x / f, y / f, z / f);
+	}
 
 	void Normalise();
-	Quaternion Normalise() const;
+	Quaternion Normalised() const;
+
+	Quaternion operator-() const
+	{
+		return Quaternion(-w, -x, -y, -z);
+	}
 
 	void Conjugate();
 	const Quaternion Conjugate() const;
 
-	float GetAngle() const
-	{
-		return std::acosf(w) * 2.f;
-	}
+	float GetAngle() const;
 
-	Vector3 GetAxis() const
-	{
-		const Vector3 xyz(x, y, z);
-		return xyz / std::sinf(GetAngle() / 2.f);
-	}
+	Vector3 GetAxis() const;
 
-	Vector3 RotateVector(const Vector3& vec) const
-	{
-		//Rodrigues formula with quaternion is better than quat * vec * quat.getInverse()
-		const float angle = GetAngle();
-		const Vector3 unitAxis = GetAxis();
+	Vector3 RotateVector(const Vector3& vec) const;
 
-		const float cosAngle = std::cosf(angle);
-		return cosAngle * vec + (1.f - cosAngle) * vec.dotProduct(unitAxis) * unitAxis + std::sin(angle) * unitAxis.cross(vec);
-	}
-
-	Matrix4 GetRotationMatrix() const
-	{
-		const float twoX = 2.f * x;
-		const float twoY = 2.f * y;
-		const float twoZ = 2.f * z;
-		const float twoXX = twoX * x;
-		const float twoXY = twoX * y;
-		const float twoXZ = twoX * z;
-		const float twoXW = twoX * w;
-		const float twoYY = twoY * y;
-		const float twoYZ = twoY * z;
-		const float twoYW = twoY * w;
-		const float twoZZ = twoZ * z;
-		const float twoZW = twoZ * w;
-
-		const Vector3 vec1(1.f - twoYY - twoZZ, twoXY + twoZW, twoXZ - twoYW);
-		const Vector3 vec2(twoXY - twoZW, 1.f - twoXX - twoZZ, twoYZ + twoXW);
-		const Vector3 vec3(twoXZ + twoYW, twoYZ - twoXW, 1.f - twoXX - twoYY);
-		
-		Matrix4 rst({   vec1.x, vec2.x, vec3.x, 0.f,
-						vec1.y, vec2.y, vec3.y, 0.f,
-						vec1.z, vec2.z, vec3.z, 0.f,
-						0.f, 0.f, 0.f, 1.f});
-
-		return rst / SquaredLength();
-	}
+	Matrix4 GetRotationMatrix() const;
 
 	float Norm() const;
 
@@ -97,7 +77,11 @@ public:
 
 	void Inverse();
 	Quaternion Inverse() const;
-	
-	string ToString();
+
+    static Quaternion Lerp(const Quaternion& q1, const Quaternion& q2, float t);
+    static Quaternion SLerp(const Quaternion& q1, const Quaternion& q2, float t);
+    static Quaternion NLerp(const Quaternion& q1, const Quaternion& q2, float t);
+
+    string ToString() const;
 };
 

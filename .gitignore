@@ -11,3 +11,18 @@ exe
 
 #Release
 AnimationProgramming/Release/*
+AnimationProgramming/Release/Animatio.551567FE.tlog/AnimationProgramming.lastbuildstate
+AnimationProgramming/Release/Animatio.551567FE.tlog/AnimationProgramming.write.1u.tlog
+AnimationProgramming/Release/Animatio.551567FE.tlog/CL.command.1.tlog
+AnimationProgramming/Release/Animatio.551567FE.tlog/CL.read.1.tlog
+*.tlog
+AnimationProgramming/Release/AnimationProgramming.exe.recipe
+AnimationProgramming/Release/AnimationProgramming.log
+*.obj
+AnimationProgramming/Release/vc142.pdb
+AnimationProgramming/AnimationProgramming.vcxproj
+AnimationProgramming/AnimationProgramming.vcxproj.filters
+AnimationProgramming/AnimationProgramming.vcxproj.user
+Release/AnimationProgramming.iobj
+Release/AnimationProgramming.ipdb
+Release/AnimationProgramming.pdb

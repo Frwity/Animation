@@ -15,18 +15,51 @@ public:
 
 	int id = -1;
 	Bone* boneParent = nullptr;
-	Vector3 originPos{};
-	Quaternion originRot{};
-	Vector3 localDifPos{};
-	Quaternion localDifRot{};
+	std::vector<std::vector<Vector3>> animsLocalPos{}; //In function of animation Id and key Id
+	std::vector<std::vector<Quaternion>> animsLocalRot{};
+
+	Vector3 actualLocalPos{0.f, 0.f, 0.f};
+	Quaternion actualLocalRot{0.f, 0.f, 0.f, 0.f};
+
 	float scale = 1.f;
+
+	Bone(int _id, Bone* _boneParent, const std::vector<std::string>& _anims, const Vector3& localBindPos, const Quaternion& localBindRot)
+		: id{_id}, boneParent{_boneParent}
+	{
+		Vector3 newLocalPos;
+		Quaternion newLocalRot;
+		int animID = 0;
+		int animCount = _anims.size();
+
+		animsLocalPos.reserve(animCount);
+		animsLocalRot.reserve(animCount);
+		for (int i = 0; i < animCount; ++i)
+		{
+			animsLocalPos.emplace_back();
+			animsLocalPos.back().reserve(GetAnimKeyCount(_anims[i].c_str()));
+
+			animsLocalRot.emplace_back();
+			animsLocalRot.back().reserve(GetAnimKeyCount(_anims[i].c_str()));
+		}
+
+		for (const std::string& anim : _anims)
+		{
+			for (size_t i = 0; i < GetAnimKeyCount(anim.c_str()); ++i)
+			{
+				GetAnimLocalBoneTransform(anim.c_str(), id, i, newLocalPos.x, newLocalPos.y, newLocalPos.z, newLocalRot.w, newLocalRot.x, newLocalRot.y, newLocalRot.z);
+				animsLocalPos[animID].emplace_back(localBindPos + newLocalPos);
+				animsLocalRot[animID].emplace_back(localBindRot * newLocalRot);
+			}
+			++animID;
+		}
+	}
 
 	Matrix4 getGlobalMatrix() const
 	{
 		if (boneParent == nullptr)
 			return Matrix4::identity();
 
-		return boneParent->getGlobalMatrix() * Matrix4::createTRSMatrix(originPos + localDifPos, originRot * localDifRot, Vector3(1.f, 1.f, 1.f));
+		return boneParent->getGlobalMatrix() * Matrix4::createTRSMatrix(actualLocalPos, actualLocalRot, Vector3(scale, scale, scale));
 	}
 
 	Vector3 getGlobalPostion() const
@@ -46,19 +79,18 @@ public:
 class Skeleton : public Graph<Bone>
 {
 public : 
-	std::string animName;
 
 	float animSpeed = 10.f;
-	float key = 0;
+	int keyCurrentAnim = 0;
+	float keyFrameAnim = 0.f;
 
-	Skeleton(const std::string& _animName)
+	Skeleton(const std::vector<std::string>& _animName)
+		: Graph<Bone>(0, nullptr, _animName, Vector3(), Quaternion())
 	{
-		data.id = 0;
-		animName = _animName;
-		addChildRecursive(*this, data.id);
+		addChildRecursive(*this, data.id, _animName);
 	}
-
-	void addChildRecursive(Graph<Bone>& parent, int start)
+	
+	void addChildRecursive(Graph<Bone>& parent, int start, const std::vector<std::string>& _animName)
 	{
 		for (size_t i = start; i < GetSkeletonBoneCount(); ++i)
 		{
@@ -68,21 +100,21 @@ public :
 				Quaternion localQuat;
 				GetSkeletonBoneLocalBindTransform(i, localPos.x, localPos.y, localPos.z, localQuat.w, localQuat.x, localQuat.y, localQuat.z);
 
-				parent.addChild(Bone{ (int)i, &parent.data, localPos, localQuat});
+				parent.addChild(Bone{ (int)i, &parent.data, _animName, localPos, localQuat});
 			}
 		}
 
 		for (Graph<Bone>& child : parent.children)
-			addChildRecursive(child, start++);
+			addChildRecursive(child, start++, _animName);
 	}
 
 	void updateWithAnimation(float deltaTime)
 	{
-		key += deltaTime * animSpeed;
+		keyFrameAnim += deltaTime * animSpeed;
 
-		if (key > GetAnimKeyCount(animName.c_str()))
+		if (keyFrameAnim > data.animsLocalPos[keyCurrentAnim].size())
 		{
-			key -= (float)GetAnimKeyCount(animName.c_str());
+			keyFrameAnim -= (float)data.animsLocalPos[keyCurrentAnim].size();
 		}
 
 		updateWithAnimationRecurs(*this, deltaTime);
@@ -90,19 +122,19 @@ public :
 
 	void updateWithAnimationRecurs(Graph<Bone>& parent, float deltaTime)
 	{
-		Vector3 newLocalPos;
-		Quaternion newLocalRot;
-
 		for (Graph<Bone>& child : parent.children)
 		{
-			GetAnimLocalBoneTransform(animName.c_str(), child.data.id, (int)key, newLocalPos.x, newLocalPos.y, newLocalPos.z, newLocalRot.w, newLocalRot.x, newLocalRot.y, newLocalRot.z);
-			child.data.localDifPos = newLocalPos;
-			child.data.localDifRot = newLocalRot;
+			float t = keyFrameAnim - (int)keyFrameAnim;
+		
+			std::cout << keyFrameAnim << " " << ((int)keyFrameAnim + 1) % (child.data.animsLocalPos[keyCurrentAnim].size()) << std::endl;
+
+			child.data.actualLocalPos = Vector3::lerp(child.data.animsLocalPos[keyCurrentAnim][keyFrameAnim], child.data.animsLocalPos[keyCurrentAnim][((int)keyFrameAnim + 1) % (child.data.animsLocalPos[keyCurrentAnim].size())], t);
+			child.data.actualLocalRot = Quaternion::SLerp(child.data.animsLocalRot[keyCurrentAnim][keyFrameAnim], child.data.animsLocalRot[keyCurrentAnim][((int)keyFrameAnim + 1) % (child.data.animsLocalRot[keyCurrentAnim].size())], t);
 
 			updateWithAnimationRecurs(child, deltaTime);
 		}
 	}
-
+		
 	inline
 	const Bone& getRoot() const { return data; }
 
@@ -137,8 +169,8 @@ public :
 
 			const Vector3 parentglobalPos = parent.data.getGlobalPostion();
 			const Vector3 childGlobalPos = child.data.getGlobalPostion();
-
-			DrawLine(parentglobalPos.x, parentglobalPos.y + 100, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y + 100, childGlobalPos.z, 1, 1, 0);
+			//std::cout << " child pos "<< childGlobalPos.x << " " << childGlobalPos.y << " " << childGlobalPos.z << " parent pos " << parentglobalPos.x << " " << parentglobalPos.y << " " << parentglobalPos.z << " ";
+			DrawLine(parentglobalPos.x, parentglobalPos.y - 100, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y - 100, childGlobalPos.z, 1, 1, 0);
 			drawPoint(childGlobalPos);
 			drawRecurs(child);
 		}
@@ -146,10 +178,10 @@ public :
 
 	void drawPoint(Vector3 pos)
 	{
-		DrawLine(pos.x, pos.y + 100, pos.z, pos.x + 1.5f, pos.y + 100, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y + 100 + 1.5f, pos.z, pos.x + 1.5f, pos.y + 100, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y + 100 + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y + 100 + 1.5f, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y + 100, pos.z + 1.5f, pos.x + 1.5f, pos.y + 100 + 1.5f, pos.z, 1, 0, 0);
+		DrawLine(pos.x, pos.y - 100, pos.z, pos.x + 1.5f, pos.y - 100, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, pos.x + 1.5f, pos.y - 100, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y - 100 + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y - 100, pos.z + 1.5f, pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, 1, 0, 0);
 
 	}
 };
