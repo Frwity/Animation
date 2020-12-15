@@ -9,6 +9,11 @@
 #include "Graph.h"
 #include "Engine.h"
 
+float lerp(float f1, float f2, float t)
+{
+	return f1 + t * (f2 - f1);
+}
+
 class Bone
 {
 public:
@@ -80,9 +85,14 @@ class Skeleton : public Graph<Bone>
 {
 public : 
 
-	float animSpeed = 10.f;
-	int keyCurrentAnim = 0;
-	float keyFrameAnim = 0.f;
+	float animSpeed = 5.f;
+	int idCurrentAnim = 0;
+	int idBlendedAnim = -1;
+	float keyFrameCurrentAnim = 0.f;
+	float keyFrameBlendedAnim = 0.f;
+	float blendAnimRatio = 0.f;
+	float fadDuration = 1.f;
+	float fadCount = 0.f;
 
 	Skeleton(const std::vector<std::string>& _animName)
 		: Graph<Bone>(0, nullptr, _animName, Vector3(), Quaternion())
@@ -110,26 +120,100 @@ public :
 
 	void updateWithAnimation(float deltaTime)
 	{
-		keyFrameAnim += deltaTime * animSpeed;
+		float timeScaleCurrentAnim = 1.f;
 
-		if (keyFrameAnim > data.animsLocalPos[keyCurrentAnim].size())
+		if (idBlendedAnim != -1)
 		{
-			keyFrameAnim -= (float)data.animsLocalPos[keyCurrentAnim].size();
+			float normalizedTimeScale = data.animsLocalPos[idBlendedAnim].size() / data.animsLocalPos[idCurrentAnim].size();
+			float normalizedTimeScale2 = data.animsLocalPos[idCurrentAnim].size() / data.animsLocalPos[idBlendedAnim].size();
+			float timeScaleNextAnim = lerp(normalizedTimeScale, 1.f, fadCount / fadDuration);
+			timeScaleCurrentAnim = lerp(1.f, normalizedTimeScale2, fadCount / fadDuration);
+
+			keyFrameBlendedAnim += timeScaleNextAnim * deltaTime * animSpeed;
+
+			if (keyFrameBlendedAnim > data.animsLocalPos[idBlendedAnim].size())
+			{
+				keyFrameBlendedAnim -= (float)data.animsLocalPos[idBlendedAnim].size();
+			}			
+		}
+
+		keyFrameCurrentAnim += timeScaleCurrentAnim * deltaTime * animSpeed;
+
+		if (keyFrameCurrentAnim > data.animsLocalPos[idCurrentAnim].size())
+		{
+			keyFrameCurrentAnim -= (float)data.animsLocalPos[idCurrentAnim].size();
 		}
 
 		updateWithAnimationRecurs(*this, deltaTime);
+
+		if (idBlendedAnim != -1)
+		{
+			fadCount += deltaTime;
+
+			if (fadCount >= fadDuration)
+			{
+				keyFrameCurrentAnim = keyFrameBlendedAnim;
+				idCurrentAnim = idBlendedAnim;
+				idBlendedAnim = -1;
+				fadCount = 0.0f;
+				keyFrameBlendedAnim = 0.f;
+			}
+		}
+	}
+
+	void blendAnimWithOther(int newIdAnim, float newFadDuration)
+	{
+		if (newIdAnim > data.animsLocalPos.size())
+			return;
+
+		fadDuration = newFadDuration;
+		idBlendedAnim = newIdAnim;
 	}
 
 	void updateWithAnimationRecurs(Graph<Bone>& parent, float deltaTime)
 	{
+		float t = keyFrameCurrentAnim - (int)keyFrameCurrentAnim;
+		Vector3 currentPos;
+		Vector3 goalPos;
+
+		Quaternion currentRot;
+		Quaternion goalRot;
+		
 		for (Graph<Bone>& child : parent.children)
 		{
-			float t = keyFrameAnim - (int)keyFrameAnim;
-		
-			std::cout << keyFrameAnim << " " << ((int)keyFrameAnim + 1) % (child.data.animsLocalPos[keyCurrentAnim].size()) << std::endl;
+			int goalNextKeyCurrentAnim = ((int)keyFrameCurrentAnim + 1) % (child.data.animsLocalPos[idCurrentAnim].size());
 
-			child.data.actualLocalPos = Vector3::lerp(child.data.animsLocalPos[keyCurrentAnim][keyFrameAnim], child.data.animsLocalPos[keyCurrentAnim][((int)keyFrameAnim + 1) % (child.data.animsLocalPos[keyCurrentAnim].size())], t);
-			child.data.actualLocalRot = Quaternion::SLerp(child.data.animsLocalRot[keyCurrentAnim][keyFrameAnim], child.data.animsLocalRot[keyCurrentAnim][((int)keyFrameAnim + 1) % (child.data.animsLocalRot[keyCurrentAnim].size())], t);
+			if (idBlendedAnim != -1)
+			{				
+				int goalNextKeyNextAnim = ((int)keyFrameBlendedAnim + 1) % (child.data.animsLocalPos[idBlendedAnim].size());
+				
+
+				//std::cout << "idCurrentAnim " << idCurrentAnim << " keyFrameCurrentAnim " << keyFrameCurrentAnim << " idBlendedAnim " << idBlendedAnim <<
+				//	" keyFrameBlendedAnim " << keyFrameBlendedAnim << " fadCount / fadDuration " << fadCount / fadDuration << std::endl;
+
+				currentPos = Vector3::lerp(	child.data.animsLocalPos[idCurrentAnim][keyFrameCurrentAnim], 
+											child.data.animsLocalPos[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+
+				goalPos = Vector3::lerp(child.data.animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim],
+										child.data.animsLocalPos[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+
+				currentRot = Quaternion::SLerp(child.data.animsLocalRot[idCurrentAnim][keyFrameCurrentAnim], 
+												child.data.animsLocalRot[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+
+				goalRot = Quaternion::SLerp(child.data.animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim],
+											child.data.animsLocalRot[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+
+			}
+			else
+			{
+				currentPos = child.data.animsLocalPos[idCurrentAnim][keyFrameCurrentAnim];
+				goalPos = child.data.animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim];
+				currentRot = child.data.animsLocalRot[idCurrentAnim][keyFrameCurrentAnim];
+				goalRot = child.data.animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim];
+			}
+
+			child.data.actualLocalPos = Vector3::lerp(currentPos, goalPos, t);
+			child.data.actualLocalRot = Quaternion::SLerp(currentRot, goalRot, t);
 
 			updateWithAnimationRecurs(child, deltaTime);
 		}

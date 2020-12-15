@@ -192,12 +192,12 @@ Quaternion Quaternion::SLerp(const Quaternion& q1, const Quaternion& q2, float t
         tempQ1 = -tempQ1;
 
 	if (abs(dot) >= 1.f)
-		return q1;
+		return q2;
 
     float omega = acosf(abs(dot));
 
 	if (abs(sinf(omega)) < 0.00001f)
-		return q1;
+		return q2;
 	
 	Quaternion toreturn = (tempQ1 * sinf((1.f - t) * omega) + q2 * sinf(t * omega)) / sinf(omega);
 

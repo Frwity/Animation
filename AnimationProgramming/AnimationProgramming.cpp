@@ -13,6 +13,10 @@ std::unique_ptr<Skeleton> skeleton;
 
 class CSimulation : public ISimulation
 {
+	float nextAnimCounter = 0.f;
+	float nextAnimDelay = 5.f;
+	bool idAnim = true;
+
 	virtual void Init() override
 	{
 		int spine01 =	GetSkeletonBoneIndex("spine_01");
@@ -60,6 +64,15 @@ class CSimulation : public ISimulation
 
 	virtual void Update(float frameTime) override
 	{
+		nextAnimCounter += frameTime;
+
+		if (nextAnimCounter >= nextAnimDelay)
+		{
+			nextAnimCounter -= nextAnimDelay;
+			skeleton->blendAnimWithOther(idAnim, 3.f);
+			idAnim = !idAnim;
+		}
+
 		skeleton->updateWithAnimation(frameTime);
 		skeleton->draw();
 
