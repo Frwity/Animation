@@ -42,6 +42,11 @@ float &Matrix4::accessor(int c, int l)
     return this->matrix[c + l * 4];
 }
 
+float Matrix4::get(int i) const
+{
+    return this->matrix[i];
+}
+
 void Matrix4::display() const
 {
     for (int i = 0; i < 4; ++i)

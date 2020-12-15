@@ -3,8 +3,6 @@ in lowp vec3 normal;
 in lowp vec4 boneIndices;
 in lowp vec4 boneWeights;
 
-
-smooth out vec2 texCoord;
 smooth out vec3 outNormal;
 
 uniform SceneMatrices
@@ -19,20 +17,15 @@ uniform SkinningMatrices
 
 uniform mat4 modelViewMatrix;
 
-
-
 void main(void)
 {
-	for (int i = 0; i < 64; i++)
-	vec4 localPos = skin.palette[boneIndices[0]] * vec4(inputPosition, 1.0f);
-	vec4 outVertexPos = mvp * localPos;
+    vec4 outPos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	vec4 pos = vec4(inputPosition, 1.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        outPos = outPos + (vec4(inputPosition, 1.0f) * skin.palette[int(boneIndices[i])]) * boneWeights[i];
+    }
+    gl_Position = (sm.projectionMatrix * modelViewMatrix) * outPos;
 
-	gl_Position = sm.projectionMatrix * (modelViewMatrix * vec4(outVertexPos.xyz, 1.0f));
-	outNormal = mat3(modelViewMatrix) * normal;
-
-	vec3 localNormal = mat3(skin.palette[boneIndices[0]]) * normal;
-	outNormal = mat3(mvp) * localNormal;
+    outNormal = normalize(mat3(modelViewMatrix) * normal);
 }
-

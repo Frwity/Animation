@@ -6,7 +6,6 @@
 #include "Maths/Quaternion.hpp"
 #include "Maths/matrix.hpp"
 #include "Maths/vector3.hpp"
-#include "Graph.h"
 #include "Engine.h"
 
 float lerp(float f1, float f2, float t)
@@ -18,17 +17,17 @@ class Bone
 {
 public:
 
-	int id = -1;
 	Bone* boneParent = nullptr;
 	std::vector<std::vector<Vector3>> animsLocalPos{}; //In function of animation Id and key Id
 	std::vector<std::vector<Quaternion>> animsLocalRot{};
+	int id = -1;
 
 	Vector3 actualLocalPos{0.f, 0.f, 0.f};
 	Quaternion actualLocalRot{0.f, 0.f, 0.f, 0.f};
 
 	float scale = 1.f;
 
-	Bone(int _id, Bone* _boneParent, const std::vector<std::string>& _anims, const Vector3& localBindPos, const Quaternion& localBindRot)
+	Bone(Bone* _boneParent, int _id, const std::vector<std::string>& _anims, const Vector3& localBindPos, const Quaternion& localBindRot)
 		: id{_id}, boneParent{_boneParent}
 	{
 		Vector3 newLocalPos;
@@ -81,9 +80,10 @@ public:
 	}
 };
 
-class Skeleton : public Graph<Bone>
+class Skeleton : public Bone
 {
 public : 
+	std::vector<std::unique_ptr<Bone>> bones;
 
 	float animSpeed = 5.f;
 	int idCurrentAnim = 0;
@@ -94,28 +94,42 @@ public :
 	float fadDuration = 1.f;
 	float fadCount = 0.f;
 
-	Skeleton(const std::vector<std::string>& _animName)
-		: Graph<Bone>(0, nullptr, _animName, Vector3(), Quaternion())
+	Skeleton(const std::vector<std::string>& _animNames)
+		: Bone(nullptr, 0, _animNames, Vector3(), Quaternion())
 	{
-		addChildRecursive(*this, data.id, _animName);
+		createBones(_animNames);
 	}
 	
-	void addChildRecursive(Graph<Bone>& parent, int start, const std::vector<std::string>& _animName)
+	void createBones(const std::vector<std::string>& _animNames)
 	{
-		for (size_t i = start; i < GetSkeletonBoneCount(); ++i)
+		for (size_t i = 0; i < GetSkeletonBoneCount() - 7; ++i)
 		{
-			if (GetSkeletonBoneParentIndex(i) == parent.data.id)
-			{
-				Vector3 localPos;
-				Quaternion localQuat;
-				GetSkeletonBoneLocalBindTransform(i, localPos.x, localPos.y, localPos.z, localQuat.w, localQuat.x, localQuat.y, localQuat.z);
+			Vector3 localPos;
+			Quaternion localQuat;
+			GetSkeletonBoneLocalBindTransform(i, localPos.x, localPos.y, localPos.z, localQuat.w, localQuat.x, localQuat.y, localQuat.z);
 
-				parent.addChild(Bone{ (int)i, &parent.data, _animName, localPos, localQuat});
-			}
+			if (i == 0)
+				bones.emplace_back(std::make_unique<Bone>(nullptr, (int)i, _animNames, localPos, localQuat));
+			else
+				bones.emplace_back(std::make_unique<Bone>(bones[GetSkeletonBoneParentIndex(i)].get(), (int)i, _animNames, localPos, localQuat));
 		}
+	}
 
-		for (Graph<Bone>& child : parent.children)
-			addChildRecursive(child, start++, _animName);
+	void displayBones()
+	{
+		for (const std::unique_ptr<Bone>& bone : bones)
+		{
+			std::cout << GetSkeletonBoneName(bone->id) << " is child of " << (bone->boneParent == nullptr ? "no parent " : GetSkeletonBoneName(bone->boneParent->id)) << std::endl;
+		}
+	}
+
+	void blendAnimWithOther(int newIdAnim, float newFadDuration)
+	{
+		if (newIdAnim > animsLocalPos.size())
+			return;
+
+		fadDuration = newFadDuration;
+		idBlendedAnim = newIdAnim;
 	}
 
 	void updateWithAnimation(float deltaTime)
@@ -124,27 +138,70 @@ public :
 
 		if (idBlendedAnim != -1)
 		{
-			float normalizedTimeScale = data.animsLocalPos[idBlendedAnim].size() / data.animsLocalPos[idCurrentAnim].size();
-			float normalizedTimeScale2 = data.animsLocalPos[idCurrentAnim].size() / data.animsLocalPos[idBlendedAnim].size();
+			float normalizedTimeScale = animsLocalPos[idBlendedAnim].size() / animsLocalPos[idCurrentAnim].size();
+			float normalizedTimeScale2 = animsLocalPos[idCurrentAnim].size() / animsLocalPos[idBlendedAnim].size();
 			float timeScaleNextAnim = lerp(normalizedTimeScale, 1.f, fadCount / fadDuration);
 			timeScaleCurrentAnim = lerp(1.f, normalizedTimeScale2, fadCount / fadDuration);
 
 			keyFrameBlendedAnim += timeScaleNextAnim * deltaTime * animSpeed;
 
-			if (keyFrameBlendedAnim > data.animsLocalPos[idBlendedAnim].size())
+			if (keyFrameBlendedAnim > animsLocalPos[idBlendedAnim].size())
 			{
-				keyFrameBlendedAnim -= (float)data.animsLocalPos[idBlendedAnim].size();
+				keyFrameBlendedAnim -= (float)animsLocalPos[idBlendedAnim].size();
 			}			
 		}
 
 		keyFrameCurrentAnim += timeScaleCurrentAnim * deltaTime * animSpeed;
 
-		if (keyFrameCurrentAnim > data.animsLocalPos[idCurrentAnim].size())
+		if (keyFrameCurrentAnim > animsLocalPos[idCurrentAnim].size())
 		{
-			keyFrameCurrentAnim -= (float)data.animsLocalPos[idCurrentAnim].size();
+			keyFrameCurrentAnim -= (float)animsLocalPos[idCurrentAnim].size();
 		}
 
-		updateWithAnimationRecurs(*this, deltaTime);
+		float t = keyFrameCurrentAnim - (int)keyFrameCurrentAnim;
+		Vector3 currentPos;
+		Vector3 goalPos;
+
+		Quaternion currentRot;
+		Quaternion goalRot;
+
+		for (std::unique_ptr<Bone>& bone : bones)
+		{
+			int goalNextKeyCurrentAnim = ((int)keyFrameCurrentAnim + 1) % (bone->animsLocalPos[idCurrentAnim].size());
+
+			if (idBlendedAnim != -1)
+			{
+				int goalNextKeyNextAnim = ((int)keyFrameBlendedAnim + 1) % (bone->animsLocalPos[idBlendedAnim].size());
+
+
+				//std::cout << "idCurrentAnim " << idCurrentAnim << " keyFrameCurrentAnim " << keyFrameCurrentAnim << " idBlendedAnim " << idBlendedAnim <<
+				//	" keyFrameBlendedAnim " << keyFrameBlendedAnim << " fadCount / fadDuration " << fadCount / fadDuration << std::endl;
+
+				currentPos = Vector3::lerp(bone->animsLocalPos[idCurrentAnim][keyFrameCurrentAnim],
+											bone->animsLocalPos[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+
+				goalPos = Vector3::lerp(bone->animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim],
+										bone->animsLocalPos[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+
+				currentRot = Quaternion::SLerp(bone->animsLocalRot[idCurrentAnim][keyFrameCurrentAnim],
+												bone->animsLocalRot[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+
+				goalRot = Quaternion::SLerp(bone->animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim],
+											bone->animsLocalRot[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+
+			}
+			else
+			{
+				currentPos = bone->animsLocalPos[idCurrentAnim][keyFrameCurrentAnim];
+				goalPos = bone->animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim];
+
+				currentRot = bone->animsLocalRot[idCurrentAnim][keyFrameCurrentAnim];
+				goalRot = bone->animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim];
+			}
+
+			bone->actualLocalPos = Vector3::lerp(currentPos, goalPos, t);
+			bone->actualLocalRot = Quaternion::SLerp(currentRot, goalRot, t);
+		}
 
 		if (idBlendedAnim != -1)
 		{
@@ -160,103 +217,21 @@ public :
 			}
 		}
 	}
-
-	void blendAnimWithOther(int newIdAnim, float newFadDuration)
-	{
-		if (newIdAnim > data.animsLocalPos.size())
-			return;
-
-		fadDuration = newFadDuration;
-		idBlendedAnim = newIdAnim;
-	}
-
-	void updateWithAnimationRecurs(Graph<Bone>& parent, float deltaTime)
-	{
-		float t = keyFrameCurrentAnim - (int)keyFrameCurrentAnim;
-		Vector3 currentPos;
-		Vector3 goalPos;
-
-		Quaternion currentRot;
-		Quaternion goalRot;
-		
-		for (Graph<Bone>& child : parent.children)
-		{
-			int goalNextKeyCurrentAnim = ((int)keyFrameCurrentAnim + 1) % (child.data.animsLocalPos[idCurrentAnim].size());
-
-			if (idBlendedAnim != -1)
-			{				
-				int goalNextKeyNextAnim = ((int)keyFrameBlendedAnim + 1) % (child.data.animsLocalPos[idBlendedAnim].size());
-				
-
-				//std::cout << "idCurrentAnim " << idCurrentAnim << " keyFrameCurrentAnim " << keyFrameCurrentAnim << " idBlendedAnim " << idBlendedAnim <<
-				//	" keyFrameBlendedAnim " << keyFrameBlendedAnim << " fadCount / fadDuration " << fadCount / fadDuration << std::endl;
-
-				currentPos = Vector3::lerp(	child.data.animsLocalPos[idCurrentAnim][keyFrameCurrentAnim], 
-											child.data.animsLocalPos[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
-
-				goalPos = Vector3::lerp(child.data.animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim],
-										child.data.animsLocalPos[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
-
-				currentRot = Quaternion::SLerp(child.data.animsLocalRot[idCurrentAnim][keyFrameCurrentAnim], 
-												child.data.animsLocalRot[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
-
-				goalRot = Quaternion::SLerp(child.data.animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim],
-											child.data.animsLocalRot[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
-
-			}
-			else
-			{
-				currentPos = child.data.animsLocalPos[idCurrentAnim][keyFrameCurrentAnim];
-				goalPos = child.data.animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim];
-				currentRot = child.data.animsLocalRot[idCurrentAnim][keyFrameCurrentAnim];
-				goalRot = child.data.animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim];
-			}
-
-			child.data.actualLocalPos = Vector3::lerp(currentPos, goalPos, t);
-			child.data.actualLocalRot = Quaternion::SLerp(currentRot, goalRot, t);
-
-			updateWithAnimationRecurs(child, deltaTime);
-		}
-	}
 		
 	inline
-	const Bone& getRoot() const { return data; }
-
-	void displayConsolGraph()
-	{
-		displayConsolGraphRecurs(*this);
-	}
-
-	void displayConsolGraphRecurs(const Graph<Bone>& parent)
-	{
-		for (const Graph<Bone>& child : parent.children)
-		{
-			std::cout << GetSkeletonBoneName(child.data.id) << " is child of " << (parent.data.id == -1 ? "no parent " : GetSkeletonBoneName(parent.data.id)) << std::endl;
-			displayConsolGraphRecurs(child);
-		}
-	}
+	const Bone& getRoot() const { return *this; }
 
 	void draw()
 	{
-		drawRecurs(*this);
-	}
-
-	void drawRecurs(const Graph<Bone>& parent)
-	{
-		for (const Graph<Bone>& child : parent.children)
+		for (const std::unique_ptr<Bone>& bone : bones)
 		{
-			if (parent.data.id == 0)
-			{
-				drawRecurs(child);
-				break;
-			}
+			if (bone->boneParent == nullptr || bone->boneParent->id <= 0)
+				continue;
 
-			const Vector3 parentglobalPos = parent.data.getGlobalPostion();
-			const Vector3 childGlobalPos = child.data.getGlobalPostion();
-			//std::cout << " child pos "<< childGlobalPos.x << " " << childGlobalPos.y << " " << childGlobalPos.z << " parent pos " << parentglobalPos.x << " " << parentglobalPos.y << " " << parentglobalPos.z << " ";
+			const Vector3 parentglobalPos = bone->boneParent->getGlobalPostion();
+			const Vector3 childGlobalPos = bone->getGlobalPostion();
 			DrawLine(parentglobalPos.x, parentglobalPos.y - 100, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y - 100, childGlobalPos.z, 1, 1, 0);
 			drawPoint(childGlobalPos);
-			drawRecurs(child);
 		}
 	}
 

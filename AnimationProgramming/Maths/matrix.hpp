@@ -19,6 +19,8 @@ public:
     float accessor(int, int) const;
     float& accessor(int, int);
 
+    float get(int) const;
+
     void display() const;
     static Matrix4 identity();
 

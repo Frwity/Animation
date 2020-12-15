@@ -29,9 +29,10 @@ public:
     }
 
     template <typename... TArgs>
-    void addChild(TArgs... args)
+    T* addChild(TArgs... args)
     {
         Graph graph(args...);
         children.push_back(graph);
+        return &graph.data;
     }
 };
