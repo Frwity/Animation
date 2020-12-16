@@ -17,18 +17,18 @@ class Bone
 {
 public:
 
-	Bone* boneParent = nullptr;
+	const int id = -1;
+	const Bone* const boneParent = nullptr;
+	const Matrix4 TPoseMatrix{};
 	std::vector<std::vector<Vector3>> animsLocalPos{}; //In function of animation Id and key Id
 	std::vector<std::vector<Quaternion>> animsLocalRot{};
-	int id = -1;
 
 	Vector3 actualLocalPos{0.f, 0.f, 0.f};
 	Quaternion actualLocalRot{0.f, 0.f, 0.f, 0.f};
-
 	float scale = 1.f;
 
 	Bone(Bone* _boneParent, int _id, const std::vector<std::string>& _anims, const Vector3& localBindPos, const Quaternion& localBindRot)
-		: id{_id}, boneParent{_boneParent}
+		: id{ _id }, boneParent{ _boneParent }, TPoseMatrix{ Matrix4::createTRSMatrix(localBindPos, localBindRot, Vector3(1.f, 1.f, 1.f))}
 	{
 		Vector3 newLocalPos;
 		Quaternion newLocalRot;
@@ -64,6 +64,14 @@ public:
 			return Matrix4::identity();
 
 		return boneParent->getGlobalMatrix() * Matrix4::createTRSMatrix(actualLocalPos, actualLocalRot, Vector3(scale, scale, scale));
+	}
+
+	Matrix4 getTPoseGlobalMatrix() const
+	{
+		if (boneParent == nullptr)
+			return Matrix4::identity();
+
+		return boneParent->getTPoseGlobalMatrix() * TPoseMatrix;
 	}
 
 	Vector3 getGlobalPostion() const
@@ -143,7 +151,7 @@ public :
 			float timeScaleNextAnim = lerp(normalizedTimeScale, 1.f, fadCount / fadDuration);
 			timeScaleCurrentAnim = lerp(1.f, normalizedTimeScale2, fadCount / fadDuration);
 
-			keyFrameBlendedAnim += timeScaleNextAnim * deltaTime * animSpeed;
+			keyFrameBlendedAnim += /*timeScaleNextAnim*/ * deltaTime * animSpeed;
 
 			if (keyFrameBlendedAnim > animsLocalPos[idBlendedAnim].size())
 			{
@@ -151,7 +159,7 @@ public :
 			}			
 		}
 
-		keyFrameCurrentAnim += timeScaleCurrentAnim * deltaTime * animSpeed;
+		keyFrameCurrentAnim += /*timeScaleCurrentAnim*/ * deltaTime * animSpeed;
 
 		if (keyFrameCurrentAnim > animsLocalPos[idCurrentAnim].size())
 		{

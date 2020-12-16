@@ -249,22 +249,144 @@ Matrix4 Matrix4::adjunct() const
     return coMatrix().transpose();
 }
 
-Matrix4 Matrix4::reverse() const
+float Matrix4::foundDeterminant() const
 {
-    assert(this->det() != 0);
+	float determinantMat1 = accessor(2, 2) * accessor(3, 3) - accessor(3, 2) * accessor(2, 3); 
+	float determinantMat2 = accessor(1, 2) * accessor(3, 3) - accessor(3, 2) * accessor(1, 3); 
+	float determinantMat3 = accessor(1, 2) * accessor(2, 3) - accessor(2, 2) * accessor(1, 3);
+	float determinantMat4 = accessor(0, 2) * accessor(3, 3) - accessor(3, 2) * accessor(0, 3);
+	float determinantMat5 = accessor(0, 2) * accessor(2, 3) - accessor(2, 2) * accessor(0, 3);
+	float determinantMat6 = accessor(0, 2) * accessor(1, 3) - accessor(1, 2) * accessor(0, 3);
 
-    Matrix4 to_return(this->adjunct());
-    float det = this->det();
+	float determinantMat2_1 =  	  accessor(1, 1) * determinantMat1 
+								- accessor(2, 1) * determinantMat2 
+								+ accessor(3, 1) * determinantMat3; 
 
-    for (int i = 0; i < 16; ++i)
-        to_return.matrix[i] /= det;
+	float determinantMat2_2 =  	  accessor(0, 1) * determinantMat1 
+								- accessor(2, 1) * determinantMat4
+								+ accessor(3, 1) * determinantMat5; 
 
-    return to_return;
+	float determinantMat2_3 =  	  accessor(0, 1) * determinantMat2 
+								- accessor(1, 1) * determinantMat4
+								+ accessor(3, 1) * determinantMat6;
+
+	float determinantMat2_4 =  	  accessor(0, 1) * determinantMat3 
+								- accessor(1, 1) * determinantMat5 
+								+ accessor(2, 1) * determinantMat6;
+
+	return 	  accessor(0, 0) * determinantMat2_1
+			- accessor(1, 0) * determinantMat2_2
+			+ accessor(2, 0) * determinantMat2_3
+			- accessor(3, 0) * determinantMat2_4;
 }
 
-Matrix4 Matrix4::resolve(const Matrix4 &right)
+float Matrix4::getMinor(unsigned int i, unsigned int j) const
 {
-    return reverse() * right.transpose();
+    Matrix3 subMatrix;
+
+	//fill submatrix
+	bool coefLineFound = false;
+	bool coefRowFound = false;
+
+	for (unsigned int iSubMatrix = 0; iSubMatrix < 3; iSubMatrix++)
+	{
+		if (iSubMatrix == i)
+			coefLineFound = true;
+
+		for (unsigned int jSubMatrix = 0; jSubMatrix < 3; jSubMatrix++)
+		{
+			if (jSubMatrix == j)
+				coefRowFound = true;
+
+			subMatrix.accessor(iSubMatrix, jSubMatrix) = accessor(iSubMatrix + coefLineFound,
+														jSubMatrix + coefRowFound);
+		}
+		coefRowFound = false;
+	}
+
+	return subMatrix.foundDeterminant();
+}
+
+float Matrix4::getCofactor(unsigned int i, unsigned int j) const
+{
+	return pow(-1, i+j) * getMinor(i, j);
+}
+
+Matrix4	Matrix4::getCoMatrix() const
+{
+	Matrix4 coMatrix;
+
+    for ( unsigned int i = 0; i < 4; i++ )
+	{
+        for ( unsigned int j = 0; j < 4; j++ )
+		{
+			coMatrix.accessor(i, j) = getCofactor(i, j);
+		}
+	}
+
+	return coMatrix;
+}
+
+void Matrix4::tranformCoMatToAdjointMat()
+{
+	transpose();
+}
+
+bool Matrix4::adjointMatrixIsReversible() const
+{
+    for ( unsigned int i = 0; i < 4; i++ )
+	{
+        for ( unsigned int j = 0; j < 4; j++ )
+		{
+			if (accessor(i, j) == 0.f)
+				return false;
+		}
+	}
+
+	return true;
+}
+
+bool Matrix4::inverse(Matrix4& m) const
+{
+    if (isOrtho() == true)
+    {
+        m = transpose();
+        return true;
+    }
+
+    float determinant = foundDeterminant();
+
+    if (determinant == 0.f) //in two step for more perform
+    {
+
+        return false;
+    }
+
+    m = getCoMatrix();
+    m.tranformCoMatToAdjointMat();
+
+    if (!m.adjointMatrixIsReversible()) 
+    { //in two step for more perform
+
+        return false;
+    }
+    m = getCoMatrix();
+    m.tranformCoMatToAdjointMat();
+
+    if (!m.adjointMatrixIsReversible())
+    {//in two step for more perform
+
+        return false;
+    }
+    for (size_t i = 0; i < 4; i++)
+    {
+        for (size_t j = 0; j < 4; j++)
+        {
+            m.accessor(i, j) = m.accessor(i, j) / determinant;
+        }
+    }
+
+    return true;
 }
 
 Matrix4 Matrix4::createScaleMatrix(Vector3 scale)
@@ -464,4 +586,55 @@ void Matrix4::move(Vector3 translate, Vector3 rotate, Vector3 scale)
 void Matrix4::move(Matrix4 transformation)
 {
     *this = *this * transformation;
+}
+
+Matrix3::Matrix3()
+{
+    for (int i = 0; i < 9; ++i)
+        this->matrix[i] = 0;
+}
+
+Matrix3::Matrix3(std::initializer_list<float> matrix)
+{
+    assert(matrix.size() == 9);
+
+    int i = 0;
+    for (float f : matrix)
+        this->matrix[i++] = f;
+}
+
+Matrix3::Matrix3(const Matrix3 &_matrix)
+{
+    for (int i = 0; i < 9; ++i)
+        this->matrix[i] = _matrix.matrix[i];
+}
+
+Matrix3::~Matrix3()
+{
+}
+
+float Matrix3::accessor(int c, int l) const
+{
+    return this->matrix[c + l * 3];
+}
+
+float &Matrix3::accessor(int c, int l)
+{
+    return this->matrix[c + l * 3];
+}
+
+float Matrix3::get(int i) const
+{
+    return this->matrix[i];
+}
+
+float Matrix3::foundDeterminant() const
+{
+	const float determinantMat1 = matrix[1 * 3 + 1] * matrix[2 * 3 + 2] - matrix[2 * 3 + 1] * matrix[1 * 3 + 2];
+	const float determinantMat2 = matrix[0 * 3 + 1] * matrix[2 * 3 + 2] - matrix[2 * 3 + 1] * matrix[0 * 3 + 2];
+	const float determinantMat3 = matrix[0 * 3 + 1] * matrix[1 * 3 + 2] - matrix[1 * 3 + 1] * matrix[0 * 3 + 2];
+
+	return 	  matrix[0 * 3 + 0] * determinantMat1 
+			- matrix[1 * 3 + 0] * determinantMat2 
+			+ matrix[2 * 3 + 0] * determinantMat3;
 }

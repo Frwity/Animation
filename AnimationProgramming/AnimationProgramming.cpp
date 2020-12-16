@@ -36,7 +36,7 @@ class CSimulation : public ISimulation
 			skeleton->blendAnimWithOther(idAnim, 3.f);
 			idAnim = !idAnim;
 		}
-
+		
 		skeleton->updateWithAnimation(frameTime);
 		skeleton->draw();
 
@@ -44,8 +44,13 @@ class CSimulation : public ISimulation
 
 		for (std::unique_ptr<Bone>& bone : skeleton->bones)
 		{
-			for (int i = 0; i < 4; ++i)
-				matrixList.push_back((bone->getGlobalMatrix()).get(i));
+			Matrix4 invTPose = Matrix4::identity();
+			bone->getTPoseGlobalMatrix().inverse(invTPose);
+
+			for (int i = 0; i < 16; ++i)
+			{
+				matrixList.push_back(((bone->getGlobalMatrix() * invTPose.transpose())).get(i));
+			}
 		}
 
 		SetSkinningPose(matrixList.data(), skeleton->bones.size());

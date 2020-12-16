@@ -12,7 +12,7 @@ uniform SceneMatrices
 
 uniform SkinningMatrices
 {
-	uniform mat4 palette[64]; 
+	uniform mat4 palette[64];
 } skin;
 
 uniform mat4 modelViewMatrix;
@@ -23,9 +23,9 @@ void main(void)
 
     for (int i = 0; i < 4; i++)
     {
-        outPos = outPos + (vec4(inputPosition, 1.0f) * skin.palette[int(boneIndices[i])]) * boneWeights[i];
+        outPos = outPos + boneWeights[i] * (vec4(inputPosition, 1.0f) * skin.palette[int(boneIndices[i])]);
     }
-    gl_Position = (sm.projectionMatrix * modelViewMatrix) * outPos;
 
+    gl_Position = sm.projectionMatrix * (modelViewMatrix * vec4(outPos.xyz, 1.0f));
     outNormal = normalize(mat3(modelViewMatrix) * normal);
 }

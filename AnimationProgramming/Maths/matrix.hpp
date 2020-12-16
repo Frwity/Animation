@@ -35,7 +35,6 @@ public:
     bool operator==(const Matrix4&) const;
     bool operator!=(const Matrix4&) const;
 
-    bool isOrtho() const;
     float det() const;
 
     Matrix4 GetSubMatrix(const Matrix4& matrix, int excludedColumnIndex, int excludedLineIndex) const;
@@ -44,8 +43,6 @@ public:
     float coFactor(int excludedColumnIndex, int excludedLineIndex) const;
     Matrix4 coMatrix() const;
     Matrix4 adjunct() const;
-    Matrix4 reverse() const;
-    Matrix4 resolve(const Matrix4& right);
 
     static Matrix4 createScaleMatrix(Vector3 scale);
 
@@ -75,6 +72,33 @@ public:
     void move(Vector3 translate, Vector3 rotate, Vector3 scale);
     void move(Matrix4 transformation);
 
+
+	bool		isOrtho() const;
+	float	    foundDeterminant() const;
+	float		getMinor(unsigned int i, unsigned int j) const;
+	float		getCofactor(unsigned int i, unsigned int j) const;
+	Matrix4		getCoMatrix() const;
+	void		tranformCoMatToAdjointMat();
+	bool		adjointMatrixIsReversible() const;
+	bool	    inverse(Matrix4& reversMat) const;
+
+};
+
+class Matrix3
+{
+protected:
+    float matrix[9];
+public:
+    Matrix3();
+    Matrix3(std::initializer_list<float> matrix);
+    Matrix3(const Matrix3&);
+    ~Matrix3();
+
+    float accessor(int, int) const;
+    float& accessor(int, int);
+    float get(int) const;
+
+    float foundDeterminant() const;
 };
 
 #endif
