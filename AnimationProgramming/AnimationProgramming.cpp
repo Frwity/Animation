@@ -33,7 +33,7 @@ class CSimulation : public ISimulation
 		if (nextAnimCounter >= nextAnimDelay)
 		{
 			nextAnimCounter -= nextAnimDelay;
-			skeleton->blendAnimWithOther(idAnim, 3.f);
+			skeleton->blendAnimWithOther(idAnim, 0.3f);
 			idAnim = !idAnim;
 		}
 		

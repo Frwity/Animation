@@ -93,12 +93,10 @@ class Skeleton : public Bone
 public : 
 	std::vector<std::unique_ptr<Bone>> bones;
 
-	float animSpeed = 5.f;
+	float animSpeed = 15.f;
 	int idCurrentAnim = 0;
 	int idBlendedAnim = -1;
 	float keyFrameCurrentAnim = 0.f;
-	float keyFrameBlendedAnim = 0.f;
-	float blendAnimRatio = 0.f;
 	float fadDuration = 1.f;
 	float fadCount = 0.f;
 
@@ -142,28 +140,18 @@ public :
 
 	void updateWithAnimation(float deltaTime)
 	{
-		float timeScaleCurrentAnim = 1.f;
-
 		if (idBlendedAnim != -1)
 		{
-			float normalizedTimeScale = animsLocalPos[idBlendedAnim].size() / animsLocalPos[idCurrentAnim].size();
-			float normalizedTimeScale2 = animsLocalPos[idCurrentAnim].size() / animsLocalPos[idBlendedAnim].size();
-			float timeScaleNextAnim = lerp(normalizedTimeScale, 1.f, fadCount / fadDuration);
-			timeScaleCurrentAnim = lerp(1.f, normalizedTimeScale2, fadCount / fadDuration);
 
-			keyFrameBlendedAnim += /*timeScaleNextAnim*/ * deltaTime * animSpeed;
-
-			if (keyFrameBlendedAnim > animsLocalPos[idBlendedAnim].size())
-			{
-				keyFrameBlendedAnim -= (float)animsLocalPos[idBlendedAnim].size();
-			}			
 		}
-
-		keyFrameCurrentAnim += /*timeScaleCurrentAnim*/ * deltaTime * animSpeed;
-
-		if (keyFrameCurrentAnim > animsLocalPos[idCurrentAnim].size())
+		else
 		{
-			keyFrameCurrentAnim -= (float)animsLocalPos[idCurrentAnim].size();
+			keyFrameCurrentAnim += deltaTime * animSpeed;
+
+			if (keyFrameCurrentAnim > animsLocalPos[idCurrentAnim].size())
+			{
+				keyFrameCurrentAnim -= (float)animsLocalPos[idCurrentAnim].size();
+			}
 		}
 
 		float t = keyFrameCurrentAnim - (int)keyFrameCurrentAnim;
@@ -179,24 +167,19 @@ public :
 
 			if (idBlendedAnim != -1)
 			{
-				int goalNextKeyNextAnim = ((int)keyFrameBlendedAnim + 1) % (bone->animsLocalPos[idBlendedAnim].size());
-
-
 				//std::cout << "idCurrentAnim " << idCurrentAnim << " keyFrameCurrentAnim " << keyFrameCurrentAnim << " idBlendedAnim " << idBlendedAnim <<
 				//	" keyFrameBlendedAnim " << keyFrameBlendedAnim << " fadCount / fadDuration " << fadCount / fadDuration << std::endl;
 
-				currentPos = Vector3::lerp(bone->animsLocalPos[idCurrentAnim][keyFrameCurrentAnim],
-											bone->animsLocalPos[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+				currentPos = bone->animsLocalPos[idCurrentAnim][keyFrameCurrentAnim];
 
-				goalPos = Vector3::lerp(bone->animsLocalPos[idCurrentAnim][goalNextKeyCurrentAnim],
-										bone->animsLocalPos[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+				goalPos = bone->animsLocalPos[idBlendedAnim][0];
 
-				currentRot = Quaternion::SLerp(bone->animsLocalRot[idCurrentAnim][keyFrameCurrentAnim],
-												bone->animsLocalRot[idBlendedAnim][keyFrameBlendedAnim], fadCount / fadDuration);
+				currentRot = bone->animsLocalRot[idCurrentAnim][keyFrameCurrentAnim];
 
-				goalRot = Quaternion::SLerp(bone->animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim],
-											bone->animsLocalRot[idBlendedAnim][goalNextKeyNextAnim], fadCount / fadDuration);
+				goalRot = bone->animsLocalRot[idBlendedAnim][0];
 
+				bone->actualLocalPos = Vector3::lerp(currentPos, goalPos, fadCount / fadDuration);
+				bone->actualLocalRot = Quaternion::SLerp(currentRot, goalRot, fadCount / fadDuration);
 			}
 			else
 			{
@@ -205,10 +188,10 @@ public :
 
 				currentRot = bone->animsLocalRot[idCurrentAnim][keyFrameCurrentAnim];
 				goalRot = bone->animsLocalRot[idCurrentAnim][goalNextKeyCurrentAnim];
+			
+				bone->actualLocalPos = Vector3::lerp(currentPos, goalPos, t);
+				bone->actualLocalRot = Quaternion::SLerp(currentRot, goalRot, t);
 			}
-
-			bone->actualLocalPos = Vector3::lerp(currentPos, goalPos, t);
-			bone->actualLocalRot = Quaternion::SLerp(currentRot, goalRot, t);
 		}
 
 		if (idBlendedAnim != -1)
@@ -217,11 +200,10 @@ public :
 
 			if (fadCount >= fadDuration)
 			{
-				keyFrameCurrentAnim = keyFrameBlendedAnim;
+				keyFrameCurrentAnim = 0.f;
 				idCurrentAnim = idBlendedAnim;
 				idBlendedAnim = -1;
 				fadCount = 0.0f;
-				keyFrameBlendedAnim = 0.f;
 			}
 		}
 	}
@@ -238,17 +220,16 @@ public :
 
 			const Vector3 parentglobalPos = bone->boneParent->getGlobalPostion();
 			const Vector3 childGlobalPos = bone->getGlobalPostion();
-			DrawLine(parentglobalPos.x, parentglobalPos.y - 100, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y - 100, childGlobalPos.z, 1, 1, 0);
+			DrawLine(parentglobalPos.x, parentglobalPos.y, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y, childGlobalPos.z, 1, 1, 0);
 			drawPoint(childGlobalPos);
 		}
 	}
 
 	void drawPoint(Vector3 pos)
 	{
-		DrawLine(pos.x, pos.y - 100, pos.z, pos.x + 1.5f, pos.y - 100, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, pos.x + 1.5f, pos.y - 100, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y - 100 + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y - 100, pos.z + 1.5f, pos.x + 1.5f, pos.y - 100 + 1.5f, pos.z, 1, 0, 0);
-
+		DrawLine(pos.x, pos.y, pos.z, pos.x + 1.5f, pos.y, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y + 1.5f, pos.z, pos.x + 1.5f, pos.y, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 1, 0, 0);
+		DrawLine(pos.x + 1.5f, pos.y, pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 1, 0, 0);
 	}
 };
