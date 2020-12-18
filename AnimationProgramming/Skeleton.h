@@ -40,10 +40,10 @@ public:
 		for (int i = 0; i < animCount; ++i)
 		{
 			animsLocalPos.emplace_back();
-			animsLocalPos.back().reserve(GetAnimKeyCount(_anims[i].c_str()));
+			animsLocalPos.back().reserve(GetAnimKeyCount(_anims[i].c_str()) + 1);
 
 			animsLocalRot.emplace_back();
-			animsLocalRot.back().reserve(GetAnimKeyCount(_anims[i].c_str()));
+			animsLocalRot.back().reserve(GetAnimKeyCount(_anims[i].c_str()) + 1);
 		}
 
 		for (const std::string& anim : _anims)
@@ -54,6 +54,7 @@ public:
 				animsLocalPos[animID].emplace_back(localBindPos + newLocalPos);
 				animsLocalRot[animID].emplace_back(localBindRot * newLocalRot);
 			}
+
 			++animID;
 		}
 	}
@@ -93,7 +94,7 @@ class Skeleton : public Bone
 public : 
 	std::vector<std::unique_ptr<Bone>> bones;
 
-	float animSpeed = 15.f;
+	float animSpeed = 10.f;
 	int idCurrentAnim = 0;
 	int idBlendedAnim = -1;
 	float keyFrameCurrentAnim = 0.f;
@@ -149,9 +150,9 @@ public :
 			keyFrameCurrentAnim += deltaTime * animSpeed;
 
 			if (keyFrameCurrentAnim > animsLocalPos[idCurrentAnim].size())
-			{
 				keyFrameCurrentAnim -= (float)animsLocalPos[idCurrentAnim].size();
-			}
+			else if (keyFrameCurrentAnim < 0)
+				keyFrameCurrentAnim = animsLocalPos[idCurrentAnim].size();
 		}
 
 		float t = keyFrameCurrentAnim - (int)keyFrameCurrentAnim;
@@ -220,16 +221,16 @@ public :
 
 			const Vector3 parentglobalPos = bone->boneParent->getGlobalPostion();
 			const Vector3 childGlobalPos = bone->getGlobalPostion();
-			DrawLine(parentglobalPos.x, parentglobalPos.y, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y, childGlobalPos.z, 1, 1, 0);
+			DrawLine(parentglobalPos.x, parentglobalPos.y, parentglobalPos.z, childGlobalPos.x, childGlobalPos.y, childGlobalPos.z, 1, 0, 0);
 			drawPoint(childGlobalPos);
 		}
 	}
 
 	void drawPoint(Vector3 pos)
 	{
-		DrawLine(pos.x, pos.y, pos.z, pos.x + 1.5f, pos.y, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y + 1.5f, pos.z, pos.x + 1.5f, pos.y, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 1, 0, 0);
-		DrawLine(pos.x + 1.5f, pos.y, pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 1, 0, 0);
+		DrawLine(pos.x, pos.y, pos.z, pos.x + 1.5f, pos.y, pos.z, 0, 1, 0);
+		DrawLine(pos.x + 1.5f, pos.y + 1.5f, pos.z, pos.x + 1.5f, pos.y, pos.z, 0, 1, 0);
+		DrawLine(pos.x + 1.5f, pos.y + 1.5f , pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 0, 1, 0);
+		DrawLine(pos.x + 1.5f, pos.y, pos.z + 1.5f, pos.x + 1.5f, pos.y + 1.5f, pos.z, 0, 1, 0);
 	}
 };
